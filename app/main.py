@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from app.crud import get_user_by_username, verify_password, hash_password
+from app.crud import get_user_by_email, verify_password, hash_password
 from app.schemas import UserLogin, Token, UserCreate
 import jwt
 from datetime import datetime, timedelta
@@ -60,15 +60,15 @@ def on_startup():
 @app.post("/register/")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     # Check if the username already exists
-    existing_user = db.query(User).filter(User.username == user.username).first()
+    existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        raise HTTPException(status_code=400, detail="Email already registered")
     
     # Hash password before saving
     hashed_password = hash_password(user.password)
     
     # Create new user with the specified role
-    new_user = User(username=user.username, password=hashed_password, role=user.role)
+    new_user = User(email=user.email, password=hashed_password, role=user.role)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -77,7 +77,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
 
 @app.post("/login/", response_model=Token)
 def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = get_user_by_username(db, user.username)
+    db_user = get_user_by_email(db, user.email)
     if db_user is None:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -85,7 +85,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Generate JWT token with user role
-    access_token = create_access_token(data={"sub": user.username, "role": db_user.role})
+    access_token = create_access_token(data={"sub": user.email, "role": db_user.role})
     return {"access_token": access_token, "token_type": "bearer"}
 
 # Function to get the current user from the JWT token
