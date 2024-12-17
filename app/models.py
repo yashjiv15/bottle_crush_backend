@@ -12,10 +12,11 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
     password = Column(String)
-    is_admin = Column(Boolean, default=False)  # Field to mark the user as admin
     role = Column(String, default="r_customer")  # Add the role field
+    is_active = Column(Boolean, default=False) 
+    is_deleted = Column(Boolean, default=False) 
 
 
 # Connect to SQLite and create a database session

@@ -38,10 +38,10 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(minutes
 
 # Function to create a superadmin user if it doesn't exist
 def create_superadmin(db: Session):
-    superadmin = db.query(User).filter(User.username == "superadmin").first()
+    superadmin = db.query(User).filter(User.email == "superadmin").first()
     if not superadmin:
         hashed_password = hash_password("superadminpassword")  # Set a default password
-        superadmin = User(username="superadmin", password=hashed_password, role="t_admin", is_admin=True)
+        superadmin = User(email="superadmin", password=hashed_password, role="t_admin", is_active=True)
         db.add(superadmin)
         db.commit()
         db.refresh(superadmin)

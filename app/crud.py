@@ -15,9 +15,9 @@ def verify_password(plain_password: str, hashed_password: str):
     return pwd_context.verify(plain_password, hashed_password)
 
 # Function to create a new user
-def create_user(db: Session, username: str, password: str):
+def create_user(db: Session, email: str, password: str):
     hashed_password = hash_password(password)
-    db_user = User(username=username, password=hashed_password)
+    db_user = User(email=email, password=hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
