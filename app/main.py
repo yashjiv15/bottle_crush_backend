@@ -6,9 +6,9 @@ from contextlib import asynccontextmanager
 from app.database import engine, Base, SessionLocal  # Import engine and Base
 from app.routes.auth import router as auth_router
 from app.routes.users import router as users_router
-from app.routes.admin import router as admin_router, create_superadmin
+from app.routes.admin import router as admin_router
 from app.routes.business import router as business_router
-
+from app.database import database  # Import the database instance
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -25,13 +25,17 @@ app.include_router(admin_router)
 app.include_router(business_router)
 
 
+# Connect to the database on app startup
 @app.on_event("startup")
-async def startup_event():
-    # Run the create_superadmin function at startup
-    db = SessionLocal()
-    create_superadmin(db)
-    db.close()
+async def startup():
+    # Connect to PostgreSQL database
+    await database.connect()
 
+# Disconnect from the database on app shutdown
+@app.on_event("shutdown")
+async def shutdown():
+    # Disconnect from the database
+    await database.disconnect()
 
 @app.get("/")
 def root():
