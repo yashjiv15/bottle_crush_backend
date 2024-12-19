@@ -36,10 +36,25 @@ class BusinessCreate(BaseModel):
     updated_by: int
     created_at: datetime = datetime.utcnow()  # Default to current timestamp
     updated_at: datetime = datetime.utcnow()  # Default to current timestamp
-    s_active: bool = True
+    is_active: bool = True
     is_deleted: bool = False
 
     class Config:
         orm_mode = True
         arbitrary_types_allowed = True  # Allow arbitrary types like bytearray
 
+class MachineCreate(BaseModel):
+    name: str
+    number: str
+    street: str
+    city: str
+    state: str
+    pin_code: str
+    owner_id: int
+    created_by: int
+    updated_by: int
+    created_at: datetime = datetime.utcnow()  # Default to current timestamp
+    updated_at: datetime = datetime.utcnow()  # Default to current timestamp
+
+    class Config:
+        orm_mode = True

@@ -5,11 +5,10 @@ from app.schemas import  BusinessCreate, UserCreate
 from app.database import get_db
 from app.models import User
 import os
-from app.core.security import role_required, hash_password
+from app.core.security import role_required, verify_token
 from uuid import uuid4 
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
-from app.core.security import verify_token
 from app.routes.users import register_user as create_user
 import json
 import hashlib  # Assuming you are hashing passwords
@@ -170,7 +169,8 @@ def serialize_business(business):
     return business_dict
 
 @router.get("/businesses", response_model=None, dependencies=[Depends(verify_token)])
-async def get_all_businesses(db: Session = Depends(get_db)):
+async def get_all_businesses(skip: int = 0,
+    limit: int = 100, db: Session = Depends(get_db)):
     # Fetch all businesses
     businesses = db.query(Business).all()
 
