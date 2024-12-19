@@ -5,6 +5,7 @@ from app.models import User
 from app.schemas import UserCreate
 from app.core.security import hash_password
 from app.database import get_db
+from app.core.security import verify_token
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -61,3 +62,13 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred. Please try again later."
         )
+
+# Get all machines
+@router.get("/users/", dependencies=[Depends(verify_token)])
+async def get_all_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    users = db.query(User).offset(skip).limit(limit).all()
+    return users
