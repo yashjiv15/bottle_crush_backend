@@ -43,5 +43,25 @@ class Business(Base):
     updated_user = relationship("User", foreign_keys=[updated_by])
 
 
+class Machine(Base):
+    __tablename__ = 'machines'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False)
+    number = Column(String, nullable=False)
+    street = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    state = Column(String, nullable=False)
+    pin_code = Column(String, nullable=False)
+    owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    owner = relationship("User", foreign_keys=[owner_id])
+    creator = relationship("User", foreign_keys=[created_by])
+    updater = relationship("User", foreign_keys=[updated_by])
+
 # Create the tables in the database (if not already created)
 Base.metadata.create_all(bind=engine)
