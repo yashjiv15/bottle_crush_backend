@@ -3,10 +3,13 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from databases import Database
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
+from dotenv import load_dotenv
+import os
 
-# Define the SQLite database URL
-DATABASE_URL = "postgresql://postgres:Eagle%2310@localhost:5432/bottle_crush"
+# Load environment variables from the .env file
+load_dotenv()
 
+DATABASE_URL = os.getenv("DATABASE")
 # Create a Database connection instance
 database = Database(DATABASE_URL)
 
