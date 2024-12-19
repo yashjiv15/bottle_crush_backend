@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.schemas import Token, UserLogin
 from app.models import User
-from app.core.security import create_access_token, verify_password, SECRET_KEY, ALGORITHM
+from app.core.security import create_access_token, verify_password, get_current_user
 import jwt
 from app.database import get_db
 
@@ -22,7 +22,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Generate JWT token with user role
-    access_token = create_access_token(data={"sub": user.email, "role": db_user.role})
+    access_token = create_access_token(data={"sub": user.email, "role": db_user.role, "id": db_user.id})
     return {"access_token": access_token, "token_type": "bearer"}
 
 

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_token
 from app.schemas import BusinessCreate
 from app.models import User
 from app.core.security import role_required
@@ -28,7 +28,7 @@ def create_superadmin(db: Session):
         print("Superadmin already exists.")
 
     
-@router.get("/admin/")
+@router.get("/admin/", dependencies=[Depends(verify_token)])
 def admin_area(current_user: dict = Depends(role_required("t_admin"))):
     return {"message": "Welcome to the admin area", "user": current_user}
 

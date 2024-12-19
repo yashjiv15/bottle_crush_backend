@@ -1,19 +1,27 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+from databases import Database
+import sqlalchemy
+from sqlalchemy.ext.declarative import declarative_base
+from dotenv import load_dotenv
+import os
 
-# Define the SQLite database URL
-DATABASE_URL = "sqlite:///./bottle_crush.db"
+# Load environment variables from the .env file
+load_dotenv()
 
-# Create the engine for SQLAlchemy
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+DATABASE_URL = os.getenv("DATABASE")
+# Create a Database connection instance
+database = Database(DATABASE_URL)
 
-# Create a SessionLocal class to create new sessions
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Define a Base class for declarative models
+# Define a base class for SQLAlchemy models
 Base = declarative_base()
 
-# Dependency to get database session
+# Create a session maker for SQLAlchemy ORM
+engine = sqlalchemy.create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+# Dependency to get the database session
 def get_db():
     db = SessionLocal()
     try:

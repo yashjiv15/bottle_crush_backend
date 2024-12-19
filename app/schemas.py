@@ -1,6 +1,8 @@
 # schemas.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional, Annotated
+from fastapi import FastAPI, File, UploadFile
 
 class UserLogin(BaseModel):
     email: str
@@ -16,16 +18,6 @@ class UserCreate(BaseModel):
     role: str  # Role is required in registration
     is_active: bool = True
     is_deleted: bool = False
-
-    class Config:
-        orm_mode = True
-
-
-class BusinessCreate(BaseModel):
-    name: str
-    email: str
-    mobile: str
-    logo_image: str  # Path to the logo image (assuming it's already uploaded somewhere)
     created_by: int
     updated_by: int
     created_at: datetime = datetime.utcnow()  # Default to current timestamp
@@ -33,3 +25,21 @@ class BusinessCreate(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class BusinessCreate(BaseModel):
+    name: str
+    mobile: str
+    logo_image: Annotated[UploadFile, File()]
+    business_owner: int
+    created_by: int
+    updated_by: int
+    created_at: datetime = datetime.utcnow()  # Default to current timestamp
+    updated_at: datetime = datetime.utcnow()  # Default to current timestamp
+    s_active: bool = True
+    is_deleted: bool = False
+
+    class Config:
+        orm_mode = True
+        arbitrary_types_allowed = True  # Allow arbitrary types like bytearray
+
