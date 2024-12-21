@@ -35,18 +35,16 @@ router = APIRouter()
 async def create_business(
     business_data: str = Form(...),  # JSON string as input
     user_data: str = Form(...),      # JSON string as input
-    logo_image: UploadFile = File(...),  # File input
+    logo_image: UploadFile = File(None),  # Optional file input
     db: Session = Depends(get_db),
     current_user: User = Depends(role_required("t_admin"))
 ):
-    
     print("Received current_user:", current_user)
-    
+
     try:
         # Parse the JSON data
         business_data = json.loads(business_data)
         user_data = json.loads(user_data)
-
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON data: {e}")
 
@@ -54,24 +52,22 @@ async def create_business(
     try:
         # Check if the email is already registered
         existing_user = db.query(User).filter(User.email == user_data["email"]).first()
-        
+
         if existing_user:
             print("User with this email already exists. Proceeding with business creation.")
             new_user = existing_user  # Use the existing user if found
         else:
-            # If the user does not exist, create a new user
+            # Create a new user if none exists
             new_user = User(
                 email=user_data["email"],
                 password=user_data["password"],  # Ensure password is hashed
                 role='t_customer',
-                created_by=current_user["id"],  # Change from current_user.id to current_user["id"]
-                updated_by=current_user["id"],  # Change from current_user.id to current_user["id"]
+                created_by=current_user["id"],  # Changed from current_user.id
+                updated_by=current_user["id"],  # Changed from current_user.id
             )
-            
             db.add(new_user)
-            db.commit()  # This will auto-generate the 'id'
-            db.refresh(new_user)  # Refresh the object to load the generated 'id'
-            user_id = new_user.id  # Access the auto-generated 'id'
+            db.commit()  # Auto-generate the 'id'
+            db.refresh(new_user)  # Refresh to load the generated 'id'
 
     except SQLAlchemyError as e:
         db.rollback()
@@ -79,20 +75,21 @@ async def create_business(
 
     # Step 2: Validate if the Business already exists
     try:
-        # Check if a business with the same name or unique field already exists
         existing_business = db.query(Business).filter(Business.name == business_data["name"]).first()
         if existing_business:
             raise HTTPException(status_code=400, detail="Business with this name already exists")
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error checking business: {str(e)}")
 
     # Step 3: Handle the Logo File
     try:
-        logo_binary = await logo_image.read()
+        if logo_image:
+            logo_binary = await logo_image.read()
 
-        if len(logo_binary) > 5 * 1024 * 1024:  # 5MB limit
-            raise HTTPException(status_code=400, detail="File is too large")
+            if len(logo_binary) > 5 * 1024 * 1024:  # 5MB limit
+                raise HTTPException(status_code=400, detail="File is too large")
+        else:
+            logo_binary = None  # Set to None if no file is uploaded
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error reading file: {str(e)}")
@@ -102,10 +99,10 @@ async def create_business(
         new_business = Business(
             name=business_data["name"],
             mobile=business_data["mobile"],
-            logo_image=logo_binary,
-            business_owner=new_user.id,  # This should now work
-            created_by=current_user["id"],  # Change from current_user.id to current_user["id"]
-            updated_by=current_user["id"],  # Change from current_user.id to current_user["id"]
+            logo_image=logo_binary,  # This can now be None if no file is uploaded
+            business_owner=new_user.id,
+            created_by=current_user["id"],  # Changed from current_user.id
+            updated_by=current_user["id"],  # Changed from current_user.id
         )
         db.add(new_business)
         db.commit()
