@@ -39,7 +39,6 @@ async def create_business(
     db: Session = Depends(get_db),
     current_user: User = Depends(role_required("t_admin"))
 ):
-    print("Received current_user:", current_user)
 
     try:
         # Parse the JSON data
