@@ -63,9 +63,7 @@ async def create_business(
             new_user = User(
                 email=user_data["email"],
                 password=user_data["password"],  # Ensure password is hashed
-                role=user_data["role"],
-                is_active=user_data["is_active"],
-                is_deleted=user_data["is_deleted"],
+                role='t_customer',
                 created_by=current_user["id"],  # Change from current_user.id to current_user["id"]
                 updated_by=current_user["id"],  # Change from current_user.id to current_user["id"]
             )
@@ -108,8 +106,6 @@ async def create_business(
             business_owner=new_user.id,  # This should now work
             created_by=current_user["id"],  # Change from current_user.id to current_user["id"]
             updated_by=current_user["id"],  # Change from current_user.id to current_user["id"]
-            created_at=business_data["created_at"],
-            updated_at=business_data["updated_at"],
         )
         db.add(new_business)
         db.commit()
