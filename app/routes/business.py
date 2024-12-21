@@ -142,39 +142,42 @@ async def get_business(business_id: int, db: Session = Depends(get_db)):
     return JSONResponse(content=response_data)
 
 
-def serialize_business(business):
-    """Convert SQLAlchemy object to a JSON-serializable dictionary."""
+def serialize_business_with_owner(business, owner_email):
+    """Convert SQLAlchemy business object to a JSON-serializable dictionary and include owner email."""
     business_dict = {key: value for key, value in vars(business).items() if not key.startswith("_")}
-    if business_dict.get("logo_image"):
-        business_dict["logo_image"] = base64.b64encode(business_dict["logo_image"]).decode("utf-8")
-    return business_dict
 
-def serialize_business(business):
-    """Convert SQLAlchemy object to a JSON-serializable dictionary."""
-    business_dict = {key: value for key, value in vars(business).items() if not key.startswith("_")}
-    
     # Handle datetime objects
     for key, value in business_dict.items():
         if isinstance(value, datetime):
             business_dict[key] = value.isoformat()
 
     # Handle binary logo image
-    if business_dict.get("logo_image"):
+    if business_dict.get("logo_image") is not None:
         business_dict["logo_image"] = base64.b64encode(business_dict["logo_image"]).decode("utf-8")
+
+    # Add the owner's email
+    business_dict["owner_email"] = owner_email
 
     return business_dict
 
 @router.get("/businesses", response_model=None, dependencies=[Depends(verify_token)])
-async def get_all_businesses(skip: int = 0,
-    limit: int = 100, db: Session = Depends(get_db)):
-    # Fetch all businesses
-    businesses = db.query(Business).all()
+async def get_all_businesses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    # Fetch businesses with owner email
+    businesses = (
+        db.query(Business, User.email.label("owner_email"))
+        .join(User, Business.business_owner == User.id)  # Join Business with User table
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     if not businesses:
         raise HTTPException(status_code=404, detail="No businesses found")
 
-    # Serialize each business
-    serialized_businesses = [serialize_business(business) for business in businesses]
+    # Serialize businesses
+    serialized_businesses = [
+        serialize_business_with_owner(business, owner_email) for business, owner_email in businesses
+    ]
 
     return JSONResponse(content={"businesses": serialized_businesses})
 
