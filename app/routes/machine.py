@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.models import Machine, User
+from app.models import Machine, Business, User
 from app.schemas import MachineCreate
 from app.database import get_db
 from datetime import datetime
 from app.core.security import role_required, verify_token
+from sqlalchemy.orm import aliased
 
 router = APIRouter()
 
@@ -13,11 +14,12 @@ router = APIRouter()
 async def create_machine(
     machine: MachineCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(role_required("t_admin"))
 ):
     # Check if the owner exists
-    owner = db.query(User).filter(User.id == machine.owner_id).first()
-    if not owner:
-        raise HTTPException(status_code=404, detail="User (owner) not found")
+    business = db.query(Business).filter(Business.id == machine.business_id).first()
+    if not business:
+        raise HTTPException(status_code=404, detail="Business (business) not found")
 
     # Create a new machine
     db_machine = Machine(
@@ -27,11 +29,9 @@ async def create_machine(
         city=machine.city,
         state=machine.state,
         pin_code=machine.pin_code,
-        owner_id=machine.owner_id,
-        created_by=machine.created_by,
-        updated_by=machine.updated_by,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        business_id=machine.business_id,
+        created_by=current_user["id"],  # Changed from current_user.id
+        updated_by=current_user["id"],  # Changed from current_user.id
     )
     db.add(db_machine)
     db.commit()
@@ -45,8 +45,48 @@ async def get_all_machines(
     limit: int = 100,
     db: Session = Depends(get_db),
 ):
-    machines = db.query(Machine).offset(skip).limit(limit).all()
-    return machines
+    # Query all machines with business name and user names
+    machines = (
+        db.query(
+            Machine.id,
+            Machine.name,
+            Machine.number,
+            Machine.street,
+            Machine.city,
+            Machine.state,
+            Machine.pin_code,
+            Business.name.label("business_name"),
+            User.email.label("creator_name"),
+            User.email.label("updater_name"),
+            Machine.created_at,
+            Machine.updated_at,
+        )
+        .join(Business, Machine.business_id == Business.id)
+        .join(User, Machine.created_by == User.id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    # Format the result
+    return [
+        {
+            "id": machine.id,
+            "name": machine.name,
+            "number": machine.number,
+            "street": machine.street,
+            "city": machine.city,
+            "state": machine.state,
+            "pin_code": machine.pin_code,
+            "business_name": machine.business_name,
+            "creator_name": machine.creator_name,
+            "updater_name": machine.updater_name,
+            "created_at": machine.created_at,
+            "updated_at": machine.updated_at,
+        }
+        for machine in machines
+    ]
+
 
 # Get a machine by ID
 @router.get("/machine/{machine_id}", dependencies=[Depends(verify_token)])
@@ -54,11 +94,51 @@ async def get_machine(
     machine_id: int,
     db: Session = Depends(get_db),
 ):
-    machine = db.query(Machine).filter(Machine.id == machine_id).first()
+    # Create aliases for the User table to join it twice
+    creator = aliased(User)
+    updater = aliased(User)
+
+    # Query machine with related business and user details
+    machine = (
+        db.query(
+            Machine.id,
+            Machine.name,
+            Machine.number,
+            Machine.street,
+            Machine.city,
+            Machine.state,
+            Machine.pin_code,
+            Business.name.label("business_name"),
+            creator.email.label("creator_name"),
+            updater.email.label("updater_name"),
+            Machine.created_at,
+            Machine.updated_at,
+        )
+        .join(Business, Machine.business_id == Business.id)
+        .join(creator, Machine.created_by == creator.id)
+        .join(updater, Machine.updated_by == updater.id)
+        .filter(Machine.id == machine_id)
+        .first()
+    )
+
     if machine is None:
         raise HTTPException(status_code=404, detail="Machine not found")
-    return machine
 
+    # Format and return the result
+    return {
+        "id": machine.id,
+        "name": machine.name,
+        "number": machine.number,
+        "street": machine.street,
+        "city": machine.city,
+        "state": machine.state,
+        "pin_code": machine.pin_code,
+        "business_name": machine.business_name,
+        "creator_name": machine.creator_name,
+        "updater_name": machine.updater_name,
+        "created_at": machine.created_at,
+        "updated_at": machine.updated_at,
+    }
 # Update a machine
 @router.put("/machines/{machine_id}", dependencies=[Depends(verify_token)])
 async def update_machine(
@@ -77,7 +157,7 @@ async def update_machine(
     db_machine.city = machine.city
     db_machine.state = machine.state
     db_machine.pin_code = machine.pin_code
-    db_machine.owner_id = machine.owner_id
+    db_machine.business_id = machine.business_id
     db_machine.updated_by = machine.updated_by
     db_machine.updated_at = datetime.utcnow()
 

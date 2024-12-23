@@ -50,7 +50,7 @@ class MachineCreate(BaseModel):
     city: str
     state: str
     pin_code: str
-    owner_id: int
+    business_id: int
     created_by: int
     updated_by: int
     created_at: datetime = datetime.utcnow()  # Default to current timestamp
