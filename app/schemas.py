@@ -51,10 +51,6 @@ class MachineCreate(BaseModel):
     state: str
     pin_code: str
     business_id: int
-    created_by: int
-    updated_by: int
-    created_at: datetime = datetime.utcnow()  # Default to current timestamp
-    updated_at: datetime = datetime.utcnow()  # Default to current timestamp
 
     class Config:
         orm_mode = True
