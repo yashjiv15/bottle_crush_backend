@@ -158,7 +158,6 @@ async def update_machine(
     db_machine.state = machine.state
     db_machine.pin_code = machine.pin_code
     db_machine.business_id = machine.business_id
-    db_machine.updated_by = machine.updated_by
     db_machine.updated_at = datetime.utcnow()
 
     db.commit()
