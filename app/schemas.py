@@ -1,5 +1,5 @@
 # schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, Annotated
 from fastapi import FastAPI, File, UploadFile
@@ -65,3 +65,7 @@ class VerifyOtpRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     reset_token: str
     new_password: str
+
+class BusinessUpdate(BaseModel):
+    name: str = Field(..., max_length=100, example="Updated Business Name")
+    mobile: str = Field(..., pattern="^[0-9]{10}$", example="9876543210")
