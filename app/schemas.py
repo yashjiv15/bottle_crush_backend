@@ -54,3 +54,14 @@ class MachineCreate(BaseModel):
 
     class Config:
         orm_mode = True
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class VerifyOtpRequest(BaseModel):
+    email: str
+    otp: str
+
+class ResetPasswordRequest(BaseModel):
+    reset_token: str
+    new_password: str
