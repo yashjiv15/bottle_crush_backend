@@ -79,7 +79,7 @@ async def get_all_users(
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
-@router.post("/users/forgot-password")
+@router.post("/users/forgot-password", tags=["Users"] )
 async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
     # Verify if the user exists
     user = db.query(User).filter(User.email == request.email).first()
@@ -118,7 +118,7 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
     return {"message": "Password reset OTP has been sent to your email"}
 
 
-@router.post("/users/verify-otp")
+@router.post("/users/verify-otp", tags=["Users"])
 async def verify_otp(request: VerifyOtpRequest, db: Session = Depends(get_db)):
     # Check if the user exists
     user = db.query(User).filter(User.email == request.email).first()
@@ -141,7 +141,7 @@ async def verify_otp(request: VerifyOtpRequest, db: Session = Depends(get_db)):
 
     return {"message": "OTP verified successfully", "reset_token": reset_token}
 
-@router.post("/users/reset-password")
+@router.post("/users/reset-password", tags=["Users"])
 async def reset_password(
     request: ResetPasswordRequest,  # Accept the request body as JSON
     db: Session = Depends(get_db),

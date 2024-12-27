@@ -10,10 +10,6 @@ from app.core.security import role_required
 # Create APIRouter instance
 router = APIRouter()
 
-
-
-
-
 # Function to create a superadmin user if it doesn't exist
 def create_superadmin(db: Session):
     superadmin = db.query(User).filter(User.email == "superadmin").first()
