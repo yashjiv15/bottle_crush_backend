@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("/register/")
+@router.post("/register/", tags=["Users"])
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     """
     Register a new user.
@@ -64,7 +64,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         )
 
 # Get all machines
-@router.get("/users/", dependencies=[Depends(verify_token)])
+@router.get("/users/", dependencies=[Depends(verify_token)], tags=["Users"])
 async def get_all_users(
     skip: int = 0,
     limit: int = 100,

@@ -10,7 +10,7 @@ from sqlalchemy.orm import aliased
 router = APIRouter()
 
 # Create a new machine
-@router.post("/create_machines/", dependencies=[Depends(verify_token)])
+@router.post("/create_machines/", dependencies=[Depends(verify_token)], tags=["Machines"])
 async def create_machine(
     machine: MachineCreate,
     db: Session = Depends(get_db),
@@ -39,7 +39,7 @@ async def create_machine(
     return db_machine
 
 # Get all machines
-@router.get("/machines/", dependencies=[Depends(verify_token)])
+@router.get("/machines/", dependencies=[Depends(verify_token)], tags=["Machines"])
 async def get_all_machines(
     skip: int = 0,
     limit: int = 100,
@@ -89,7 +89,7 @@ async def get_all_machines(
 
 
 # Get a machine by ID
-@router.get("/machine/{machine_id}", dependencies=[Depends(verify_token)])
+@router.get("/machine/{machine_id}", dependencies=[Depends(verify_token)], tags=["Machines"])
 async def get_machine(
     machine_id: int,
     db: Session = Depends(get_db),
@@ -140,7 +140,7 @@ async def get_machine(
         "updated_at": machine.updated_at,
     }
 # Update a machine
-@router.put("/machines/{machine_id}", dependencies=[Depends(verify_token)])
+@router.put("/machines/{machine_id}", dependencies=[Depends(verify_token)], tags=["Machines"])
 async def update_machine(
     machine_id: int,
     machine: MachineCreate,
@@ -165,7 +165,7 @@ async def update_machine(
     return db_machine
 
 # Delete a machine
-@router.delete("/machines/{machine_id}", dependencies=[Depends(verify_token)])
+@router.delete("/machines/{machine_id}", dependencies=[Depends(verify_token)] , tags=["Machines"])
 async def delete_machine(
     machine_id: int,
     db: Session = Depends(get_db),

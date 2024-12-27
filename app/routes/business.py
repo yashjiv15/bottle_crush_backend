@@ -31,7 +31,7 @@ os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
 router = APIRouter()
 
-@router.post("/create_business", dependencies=[Depends(verify_token)])
+@router.post("/create_business", dependencies=[Depends(verify_token)], tags=["Business"])
 async def create_business(
     business_data: str = Form(...),  # JSON string as input
     user_data: str = Form(...),      # JSON string as input
@@ -118,7 +118,7 @@ async def create_business(
 
 
 
-@router.get("/business/{business_id}", response_model=None, dependencies=[Depends(verify_token)])
+@router.get("/business/{business_id}", response_model=None, dependencies=[Depends(verify_token)], tags=["Business"])
 async def get_business(business_id: int, db: Session = Depends(get_db)):
     business = db.query(Business).filter(Business.id == business_id).first()
 
@@ -156,7 +156,7 @@ def serialize_business_with_owner(business, owner_email):
 
     return business_dict
 
-@router.get("/businesses", response_model=None, dependencies=[Depends(verify_token)])
+@router.get("/businesses", response_model=None, dependencies=[Depends(verify_token)], tags=["Business"])
 async def get_all_businesses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     # Fetch businesses with owner email
     businesses = (
@@ -178,7 +178,7 @@ async def get_all_businesses(skip: int = 0, limit: int = 100, db: Session = Depe
     return JSONResponse(content={"businesses": serialized_businesses})
 
 
-@router.delete("/business/{business_id}", dependencies=[Depends(verify_token)])
+@router.delete("/business/{business_id}", dependencies=[Depends(verify_token)], tags=["Business"])
 async def delete_business(
     business_id: int, 
     db: Session = Depends(get_db), 

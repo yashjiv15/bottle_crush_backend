@@ -28,7 +28,7 @@ def create_superadmin(db: Session):
         print("Superadmin already exists.")
 
     
-@router.get("/admin/", dependencies=[Depends(verify_token)])
+@router.get("/admin/", dependencies=[Depends(verify_token)], tags=["Admin"])
 def admin_area(current_user: dict = Depends(role_required("t_admin"))):
     return {"message": "Welcome to the admin area", "user": current_user}
 
