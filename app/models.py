@@ -16,6 +16,8 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     password = Column(String)
     role = Column(String, default="r_customer")  # Add the role field
+    reset_otp = Column(String, nullable=True)  # Store the OTP
+    reset_otp_expiration = Column(DateTime, nullable=True)  # Store the expiration timestamp
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=False)
