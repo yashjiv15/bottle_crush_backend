@@ -55,6 +55,17 @@ class MachineCreate(BaseModel):
     class Config:
         orm_mode = True
 
+# Pydantic schema for creating a new bottle entry
+class BottleCreate(BaseModel):
+    machine_id: int
+    bottle_count: int
+    bottle_weight: float
+    is_deleted: bool = False
+
+    class Config:
+        orm_mode = True
+
+
 class ForgotPasswordRequest(BaseModel):
     email: str
 

@@ -1,12 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+<<<<<<< HEAD
+from app.models import Machine, Business, User, Bottle
+from app.schemas import MachineCreate
+=======
 from app.models import Machine, Business, User
 from app.schemas import MachineCreate, MachinesPerBusiness
+>>>>>>> 2c5dcfe6320886c89a27c05706b7cec37e659971
 from app.database import get_db
 from datetime import datetime
 from app.core.security import role_required, verify_token
 from sqlalchemy.orm import aliased
+<<<<<<< HEAD
+from sqlalchemy import func
+from typing import Dict, List
+=======
 from typing import List
+>>>>>>> 2c5dcfe6320886c89a27c05706b7cec37e659971
 
 router = APIRouter()
 
@@ -179,6 +189,41 @@ async def delete_machine(
     db.commit()
     return db_machine
 
+<<<<<<< HEAD
+@router.get("/machines-count", response_model=int, tags=["Machines"])
+async def get_total_machines_count(db: Session = Depends(get_db)):
+    # Query to get the total count of machines
+    machine_count = db.query(func.count(Machine.id)).scalar()
+
+    if machine_count is None:
+        raise HTTPException(status_code=404, detail="No machines found")
+
+    return machine_count
+
+
+@router.get("/machines/bottle-count", response_model=List[Dict[str, int]], tags=["Machines"])
+async def get_bottle_count_per_machine(db: Session = Depends(get_db)):
+    # Query the total bottle count per machine
+    result = (
+        db.query(
+            Bottle.machine_id,
+            func.sum(Bottle.bottle_count).label("total_bottle_count")
+        )
+        .group_by(Bottle.machine_id)  # Group by machine_id to get counts for each machine
+        .join(Machine, Bottle.machine_id == Machine.id)  # Join with Machine to get machine details if needed
+        .all()  # Fetch all results
+    )
+
+    # If no bottles are found, return an empty list
+    if not result:
+        raise HTTPException(status_code=404, detail="No bottles found")
+
+    # Format and return the result
+    return [
+        {"machine_id": machine_id, "total_bottle_count": total_bottle_count or 0}
+        for machine_id, total_bottle_count in result
+    ]
+=======
 @router.get("/my-machines", response_model=List[MachinesPerBusiness], dependencies=[Depends(verify_token)], tags=["Machines"])
 async def get_machines_by_business(db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
     """
@@ -198,3 +243,4 @@ async def get_machines_by_business(db: Session = Depends(get_db), payload: dict 
         raise HTTPException(status_code=404, detail="No machines found for this business")
 
     return machines
+>>>>>>> 2c5dcfe6320886c89a27c05706b7cec37e659971

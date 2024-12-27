@@ -9,6 +9,7 @@ from app.routes.users import router as users_router
 from app.routes.admin import router as admin_router
 from app.routes.business import router as business_router
 from app.routes.machine import router as machine_router
+from app.routes.bottles import router as bottle_router
 from app.database import database  # Import the database instance
 
 # Create database tables
@@ -25,6 +26,7 @@ app.include_router(users_router)
 app.include_router(admin_router)
 app.include_router(business_router)
 app.include_router(machine_router)
+app.include_router(bottle_router)
 
 
 # Connect to the database on app startup
