@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
 from sqlalchemy.orm import Session
 from app.models import Business
-from app.schemas import  BusinessCreate, UserCreate
+from app.schemas import  BusinessCreate, UserCreate, BusinessUpdate
 from app.database import get_db
 from app.models import User
 import os
@@ -237,3 +237,40 @@ async def get_my_businesses(skip: int = 0, limit: int = 100, db: Session = Depen
     ]
 
     return JSONResponse(content={"businesses": serialized_businesses})
+
+@router.put("/businesses/{business_id}", dependencies=[Depends(verify_token)], tags=["Business"])
+async def update_business(
+    business_id: int,
+    business_data: BusinessUpdate,
+    db: Session = Depends(get_db),
+):
+    """
+    Update an existing business by its ID.
+    """
+    # Fetch the business by ID
+    db_business = db.query(Business).filter(Business.id == business_id).first()
+    if db_business is None:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    # Update business details
+    db_business.name = business_data.name
+    db_business.mobile = business_data.mobile
+    db_business.updated_at = datetime.utcnow()
+
+    # Commit the changes
+    db.commit()
+    db.refresh(db_business)
+
+    # Return the updated business
+    return {
+        "message": "Business updated successfully",
+        "business": {
+            "id": db_business.id,
+            "name": db_business.name,
+            "mobile": db_business.mobile,
+            "created_by": db_business.created_by,
+            "updated_by": db_business.updated_by,
+            "created_at": db_business.created_at,
+            "updated_at": db_business.updated_at,
+        },
+    }
