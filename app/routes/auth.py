@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 
-@router.post("/login/", response_model=Token)
+@router.post("/login/", response_model=Token, tags=["Users"])
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = get_user_by_email(db, user.email)
     if db_user is None:

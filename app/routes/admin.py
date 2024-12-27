@@ -10,10 +10,6 @@ from app.core.security import role_required
 # Create APIRouter instance
 router = APIRouter()
 
-
-
-
-
 # Function to create a superadmin user if it doesn't exist
 def create_superadmin(db: Session):
     superadmin = db.query(User).filter(User.email == "superadmin").first()
@@ -28,7 +24,7 @@ def create_superadmin(db: Session):
         print("Superadmin already exists.")
 
     
-@router.get("/admin/", dependencies=[Depends(verify_token)])
+@router.get("/admin/", dependencies=[Depends(verify_token)], tags=["Admin"])
 def admin_area(current_user: dict = Depends(role_required("t_admin"))):
     return {"message": "Welcome to the admin area", "user": current_user}
 
