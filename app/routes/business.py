@@ -5,7 +5,7 @@ from app.schemas import  BusinessCreate, UserCreate
 from app.database import get_db
 from app.models import User
 import os
-from app.core.security import role_required, verify_token
+from app.core.security import role_required, verify_token, get_current_user
 from uuid import uuid4 
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
@@ -125,10 +125,17 @@ async def get_business(business_id: int, db: Session = Depends(get_db)):
     if not business:
         raise HTTPException(status_code=404, detail="Business not found")
 
+    # If the logo_image is stored as bytes (e.g., in the database)
+    if business.logo_image:
+        logo_image_base64 = base64.b64encode(business.logo_image).decode('utf-8')
+    else:
+        logo_image_base64 = None  # If no image exists, return None or a default
+
     response_data = {
         "id": business.id,
         "name": business.name,
         "mobile": business.mobile,
+        "logo_image": logo_image_base64,  # Send the Base64 string
         "created_by": business.created_by,
         "updated_by": business.updated_by,
         "created_at": business.created_at.isoformat(),  # Convert datetime to string
@@ -208,3 +215,25 @@ async def delete_business(
         raise HTTPException(status_code=500, detail=f"Error deleting business: {str(e)}")
 
     return {"message": "Business deleted successfully", "business_id": business_id}
+
+@router.get("/my-business", response_model=None, dependencies=[Depends(verify_token)], tags=["Business"])
+async def get_my_businesses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    # Fetch businesses for the current authenticated user
+    businesses = (
+        db.query(Business, User.email.label("owner_email"))
+        .join(User, Business.business_owner == User.id)  # Join Business with User table
+        .filter(Business.business_owner == current_user["id"])  # Filter by current user's ID
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    if not businesses:
+        raise HTTPException(status_code=404, detail="No businesses found for the current user")
+
+    # Serialize businesses
+    serialized_businesses = [
+        serialize_business_with_owner(business, owner_email) for business, owner_email in businesses
+    ]
+
+    return JSONResponse(content={"businesses": serialized_businesses})
