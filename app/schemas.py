@@ -65,3 +65,13 @@ class VerifyOtpRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     reset_token: str
     new_password: str
+
+
+class MachinesPerBusiness(BaseModel):
+    id: int
+    name: str
+    number: str
+    city: str
+    state: str
+    pin_code: str
+    
