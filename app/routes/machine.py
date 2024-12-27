@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.models import Machine, Business, User
-from app.schemas import MachineCreate
+from app.schemas import MachineCreate, MachinesPerBusiness
 from app.database import get_db
 from datetime import datetime
 from app.core.security import role_required, verify_token
 from sqlalchemy.orm import aliased
+from typing import List
 
 router = APIRouter()
 
@@ -177,3 +178,23 @@ async def delete_machine(
     db.delete(db_machine)
     db.commit()
     return db_machine
+
+@router.get("/my-machines", response_model=List[MachinesPerBusiness], dependencies=[Depends(verify_token)], tags=["Machines"])
+async def get_machines_by_business(db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
+    """
+    Fetch all machines associated with the current user's business.
+    The user's business is fetched based on the JWT token.
+    """
+    user_id = payload.get("id")  # Assuming you store user_id in the token payload
+    # Fetch the business owned by the current user
+    business = db.query(Business).filter(Business.business_owner == user_id).first()
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found for the user")
+    
+    # Fetch all machines associated with this business
+    machines = db.query(Machine).filter(Machine.business_id == business.id).all()
+
+    if not machines:
+        raise HTTPException(status_code=404, detail="No machines found for this business")
+
+    return machines
