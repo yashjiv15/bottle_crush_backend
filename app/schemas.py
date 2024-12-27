@@ -80,3 +80,12 @@ class ResetPasswordRequest(BaseModel):
 class BusinessUpdate(BaseModel):
     name: str = Field(..., max_length=100, example="Updated Business Name")
     mobile: str = Field(..., pattern="^[0-9]{10}$", example="9876543210")
+      
+class MachinesPerBusiness(BaseModel):
+    id: int
+    name: str
+    number: str
+    city: str
+    state: str
+    pin_code: str
+    
