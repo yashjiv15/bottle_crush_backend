@@ -18,7 +18,7 @@ def validate_file_size(file: UploadFile, max_size_mb: int = 5):
         raise HTTPException(status_code=400, detail=f"File size exceeds {max_size_mb} MB limit")
 
 
-@router.post("/send-email", tags=["Email"])
+@router.post("/send-email", dependencies=[Depends(verify_token)], tags=["Email"])
 async def send_email(
     to_email: EmailStr = Form(...),
     subject: str = Form(...),
