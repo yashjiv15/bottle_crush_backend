@@ -6,6 +6,7 @@ from email.message import EmailMessage
 import smtplib
 import os
 from app.core.email_settings import MAIL_USERNAME, MAIL_PASSWORD, MAIL_PORT, MAIL_SERVER
+from app.core.security import verify_token
 
 router = APIRouter()
 
