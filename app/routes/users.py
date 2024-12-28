@@ -12,6 +12,7 @@ from app.core.email_settings import fast_mail
 from datetime import datetime, timedelta
 import random
 import jwt
+from fastapi.responses import JSONResponse
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -171,3 +172,12 @@ async def reset_password(
     db.commit()
 
     return {"message": "Password reset successfully"}
+
+@router.post("/logout", tags=["Users"])
+async def logout():
+    """
+    Logout the user by clearing session cookies.
+    """
+    response = JSONResponse(content={"message": "Logout successful"})
+    response.delete_cookie("session_id")
+    return response
