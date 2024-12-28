@@ -6,7 +6,8 @@ from email.message import EmailMessage
 import smtplib
 import os
 from app.core.email_settings import MAIL_USERNAME, MAIL_PASSWORD, MAIL_PORT, MAIL_SERVER
-from app.core.security import verify_token
+from app.core.security import verify_token, role_required
+from app.models import User
 
 router = APIRouter()
 
@@ -19,12 +20,13 @@ def validate_file_size(file: UploadFile, max_size_mb: int = 5):
         raise HTTPException(status_code=400, detail=f"File size exceeds {max_size_mb} MB limit")
 
 
-@router.post("/send-email", dependencies=[Depends(verify_token)], tags=["Email"])
+@router.post("/send-email", dependencies=[Depends(verify_token)], tags=["Admin-Email"])
 async def send_email(
     to_email: EmailStr = Form(...),
     subject: str = Form(...),
     message: str = Form(...),
     attachments: Optional[List[UploadFile]] = None,
+    current_user: User = Depends(role_required("t_admin"))
 ):
     """
     Send an email with optional PDF or Excel attachments.
