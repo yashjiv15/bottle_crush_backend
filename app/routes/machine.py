@@ -181,7 +181,7 @@ async def delete_machine(
     db.commit()
     return db_machine
 
-@router.get("/machines-count", response_model=int, tags=["Machines"])
+@router.get("/machines-count", response_model=int, dependencies=[Depends(verify_token)], tags=["Machines"])
 async def get_total_machines_count(db: Session = Depends(get_db)):
     # Query to get the total count of machines
     machine_count = db.query(func.count(Machine.id)).scalar()
@@ -192,7 +192,7 @@ async def get_total_machines_count(db: Session = Depends(get_db)):
     return machine_count
 
 
-@router.get("/machines/bottle-count", response_model=List[Dict[str, int]], tags=["Machines"])
+@router.get("/machines/bottle-count", response_model=List[Dict[str, int]], dependencies=[Depends(verify_token)], tags=["Machines"])
 async def get_bottle_count_per_machine(db: Session = Depends(get_db)):
     # Query the total bottle count per machine
     result = (
@@ -233,3 +233,24 @@ async def get_machines_by_business(db: Session = Depends(get_db), payload: dict 
         raise HTTPException(status_code=404, detail="No machines found for this business")
 
     return machines
+
+@router.get("/machines-per-business", response_model=dict, dependencies=[Depends(verify_token)], tags=["Machines"])
+async def get_machines_per_business(db: Session = Depends(get_db)):
+    """
+    Fetch the count of machines for each business.
+    """
+    # Query to group machines by business and count them
+    result = (
+        db.query(Business.name.label("business_name"), func.count(Machine.id).label("machine_count"))
+        .join(Machine, Machine.business_id == Business.id)
+        .group_by(Business.name)
+        .all()
+    )
+
+    if not result:
+        raise HTTPException(status_code=404, detail="No machines found")
+
+    # Convert the result into a dictionary
+    machines_per_business = {row.business_name: row.machine_count for row in result}
+
+    return machines_per_business

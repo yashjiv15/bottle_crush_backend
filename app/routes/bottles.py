@@ -35,7 +35,7 @@ async def create_bottle(
     return db_bottle
 
 
-@router.get("/bottles/", tags=["Bottles"])
+@router.get("/bottles/",  dependencies=[Depends(verify_token)], tags=["Bottles"])
 async def get_all_bottles(
     skip: int = 0,
     limit: int = 100,
@@ -75,7 +75,7 @@ async def get_all_bottles(
     ]
 
 
-@router.get("/bottle/{bottle_id}", tags=["Bottles"])
+@router.get("/bottle/{bottle_id}",  dependencies=[Depends(verify_token)], tags=["Bottles"])
 async def get_bottle(
     bottle_id: int,
     db: Session = Depends(get_db),
@@ -116,7 +116,7 @@ async def get_bottle(
         "updated_at": bottle.updated_at,
     }
 
-@router.get("/bottle-stats", response_model=Dict[str, float], tags=["Bottles"])
+@router.get("/bottle-stats", response_model=Dict[str, float],  dependencies=[Depends(verify_token)], tags=["Bottles"])
 async def get_bottle_stats(db: Session = Depends(get_db)):
     result = (
         db.query(
@@ -138,7 +138,7 @@ async def get_bottle_stats(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/my-bottle-stats", response_model=Dict[str, float], tags=["Bottles"])
+@router.get("/my-bottle-stats", response_model=Dict[str, float],  dependencies=[Depends(verify_token)], tags=["Bottles"])
 async def get_bottle_stats(db: Session = Depends(get_db), current_user: User = Depends(verify_token)):
     # Get the user's business by their ID
     business = db.query(Business).filter(Business.business_owner == current_user["id"]).first()
