@@ -85,6 +85,7 @@ class MachinesPerBusiness(BaseModel):
     id: int
     name: str
     number: str
+    street: str
     city: str
     state: str
     pin_code: str
