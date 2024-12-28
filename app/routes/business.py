@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 import base64
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import func
 
 router = APIRouter()
 
@@ -274,3 +275,14 @@ async def update_business(
             "updated_at": db_business.updated_at,
         },
     }
+
+
+@router.get("/business-count", response_model=int, dependencies=[Depends(verify_token)], tags=["Business"])
+async def get_business_count(db: Session = Depends(get_db)):
+    """
+    Fetch the total count of businesses.
+    """
+    # Query to count the total number of businesses
+    business_count = db.query(func.count(Business.id)).scalar()
+
+    return business_count
