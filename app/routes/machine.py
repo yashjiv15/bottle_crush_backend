@@ -13,7 +13,7 @@ from typing import List
 router = APIRouter()
 
 # Create a new machine
-@router.post("/create_machines/", dependencies=[Depends(verify_token)], tags=["Machines"])
+@router.post("/create_machines/", dependencies=[Depends(verify_token)], tags=["Admin-Machines"])
 async def create_machine(
     machine: MachineCreate,
     db: Session = Depends(get_db),
@@ -42,7 +42,7 @@ async def create_machine(
     return db_machine
 
 # Get all machines
-@router.get("/machines/", dependencies=[Depends(verify_token)], tags=["Machines"])
+@router.get("/machines/", dependencies=[Depends(verify_token)], tags=["Admin-Machines"])
 async def get_all_machines(
     skip: int = 0,
     limit: int = 100,
@@ -92,7 +92,7 @@ async def get_all_machines(
 
 
 # Get a machine by ID
-@router.get("/machine/{machine_id}", dependencies=[Depends(verify_token)], tags=["Machines"])
+@router.get("/machine/{machine_id}", dependencies=[Depends(verify_token)], tags=["Admin-Machines"])
 async def get_machine(
     machine_id: int,
     db: Session = Depends(get_db),
@@ -143,7 +143,7 @@ async def get_machine(
         "updated_at": machine.updated_at,
     }
 # Update a machine
-@router.put("/machines/{machine_id}", dependencies=[Depends(verify_token)], tags=["Machines"])
+@router.put("/machines/{machine_id}", dependencies=[Depends(verify_token)], tags=["Admin-Machines"])
 async def update_machine(
     machine_id: int,
     machine: MachineCreate,
@@ -168,7 +168,7 @@ async def update_machine(
     return db_machine
 
 # Delete a machine
-@router.delete("/machines/{machine_id}", dependencies=[Depends(verify_token)] , tags=["Machines"])
+@router.delete("/machines/{machine_id}", dependencies=[Depends(verify_token)] , tags=["Admin-Machines"])
 async def delete_machine(
     machine_id: int,
     db: Session = Depends(get_db),
@@ -181,7 +181,7 @@ async def delete_machine(
     db.commit()
     return db_machine
 
-@router.get("/machines-count", response_model=int, dependencies=[Depends(verify_token)], tags=["Machines"])
+@router.get("/machines-count", response_model=int, dependencies=[Depends(verify_token)], tags=["Admin-Dashboard"])
 async def get_total_machines_count(db: Session = Depends(get_db)):
     # Query to get the total count of machines
     machine_count = db.query(func.count(Machine.id)).scalar()
@@ -192,7 +192,7 @@ async def get_total_machines_count(db: Session = Depends(get_db)):
     return machine_count
 
 
-@router.get("/machines/bottle-count", response_model=List[Dict[str, int]], dependencies=[Depends(verify_token)], tags=["Machines"])
+@router.get("/machines/bottle-count", response_model=List[Dict[str, int]], dependencies=[Depends(verify_token)], tags=["Admin-Dashboard"])
 async def get_bottle_count_per_machine(db: Session = Depends(get_db)):
     # Query the total bottle count per machine
     result = (
@@ -214,7 +214,7 @@ async def get_bottle_count_per_machine(db: Session = Depends(get_db)):
         {"machine_id": machine_id, "total_bottle_count": total_bottle_count or 0}
         for machine_id, total_bottle_count in result
     ]
-@router.get("/my-machines", response_model=List[MachinesPerBusiness], dependencies=[Depends(verify_token)], tags=["Machines"])
+@router.get("/my-machines", response_model=List[MachinesPerBusiness], dependencies=[Depends(verify_token)], tags=["Customer-Machines"])
 async def get_machines_by_business(db: Session = Depends(get_db), payload: dict = Depends(verify_token)):
     """
     Fetch all machines associated with the current user's business.
@@ -234,7 +234,7 @@ async def get_machines_by_business(db: Session = Depends(get_db), payload: dict 
 
     return machines
 
-@router.get("/machines-per-business", response_model=dict, dependencies=[Depends(verify_token)], tags=["Machines"])
+@router.get("/machines-per-business", response_model=dict, dependencies=[Depends(verify_token)], tags=["Admin-Dashboard"])
 async def get_machines_per_business(db: Session = Depends(get_db)):
     """
     Fetch the count of machines for each business.

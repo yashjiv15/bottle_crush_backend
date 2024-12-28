@@ -43,7 +43,6 @@ def role_required(required_role: str):
 # Function to get the current user from the JWT token
 def get_current_user(request: Request):
     token = request.headers.get("Authorization")
-    print(f"Authorization Header: {token}")  # Debug print
     if token is None:
         print("No token provided")
         raise HTTPException(status_code=403, detail="Not authenticated")

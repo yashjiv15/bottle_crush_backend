@@ -4,14 +4,14 @@ from app.models import Machine, Bottle, User, Business
 from app.schemas import BottleCreate
 from app.database import get_db
 from datetime import datetime
-from app.core.security import role_required, verify_token
+from app.core.security import get_current_user, verify_token
 from sqlalchemy.orm import aliased
-from sqlalchemy import func
+from sqlalchemy import func, cast, Date
 from typing import Dict
 
 router = APIRouter()
 
-@router.post("/create_bottle/", tags=["Bottles"])
+@router.post("/create_bottle/", tags=["Admin-Bottle"])
 async def create_bottle(
     bottle: BottleCreate,  # Assuming you have a Pydantic model BottleCreate
     db: Session = Depends(get_db)
@@ -35,7 +35,7 @@ async def create_bottle(
     return db_bottle
 
 
-@router.get("/bottles/",  dependencies=[Depends(verify_token)], tags=["Bottles"])
+@router.get("/bottles/",  dependencies=[Depends(verify_token)], tags=["Admin-Bottle"])
 async def get_all_bottles(
     skip: int = 0,
     limit: int = 100,
@@ -75,7 +75,7 @@ async def get_all_bottles(
     ]
 
 
-@router.get("/bottle/{bottle_id}",  dependencies=[Depends(verify_token)], tags=["Bottles"])
+@router.get("/bottle/{bottle_id}",  dependencies=[Depends(verify_token)], tags=["Admin-Bottle"])
 async def get_bottle(
     bottle_id: int,
     db: Session = Depends(get_db),
@@ -116,7 +116,7 @@ async def get_bottle(
         "updated_at": bottle.updated_at,
     }
 
-@router.get("/bottle-stats", response_model=Dict[str, float],  dependencies=[Depends(verify_token)], tags=["Bottles"])
+@router.get("/bottle-stats", response_model=Dict[str, float],  dependencies=[Depends(verify_token)], tags=["Admin-Dashboard"])
 async def get_bottle_stats(db: Session = Depends(get_db)):
     result = (
         db.query(
@@ -138,7 +138,7 @@ async def get_bottle_stats(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/my-bottle-stats", response_model=Dict[str, float],  dependencies=[Depends(verify_token)], tags=["Bottles"])
+@router.get("/my-bottle-stats", response_model=Dict[str, float],  dependencies=[Depends(verify_token)], tags=["Customer-Dashboard"])
 async def get_bottle_stats(db: Session = Depends(get_db), current_user: User = Depends(verify_token)):
     # Get the user's business by their ID
     business = db.query(Business).filter(Business.business_owner == current_user["id"]).first()
@@ -172,3 +172,97 @@ async def get_bottle_stats(db: Session = Depends(get_db), current_user: User = D
         "total_count": total_count or 0,  # Return 0 if no count is found
         "total_weight": total_weight or 0.0  # Return 0.0 if no weight is found
     }
+
+@router.get("/my-daywise-bottle-stats", dependencies=[Depends(verify_token)], tags=["Customer-Dashboard"])
+async def get_daywise_bottle_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Fetch current user
+):
+    """
+    Get day-wise count and weight of bottles per machine for the current user's business.
+    """
+    # Fetch the business ID from the current user
+    business_owner = current_user["id"]  # Assuming the current user has a business_id attribute
+    print(business_owner)
+    # Validate if the business exists
+    business = db.query(Business).filter(Business.business_owner == business_owner).first()
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+    # Query to calculate day-wise bottle stats
+    stats = (
+        db.query(
+            cast(Bottle.created_at, Date).label("date"),  # Extract date from timestamp
+            Machine.id.label("machine_id"),
+            Machine.name.label("machine_name"),
+            func.sum(Bottle.bottle_count).label("total_bottles"),
+            func.sum(Bottle.bottle_weight).label("total_weight"),
+        )
+        .join(Machine, Bottle.machine_id == Machine.id)
+        .filter(Machine.business_id == business.id)  # Filter by business ID from the current user
+        .group_by(cast(Bottle.created_at, Date), Machine.id)  # Group by date and machine
+        .order_by(cast(Bottle.created_at, Date).desc(), Machine.id)  # Sort by date and machine
+        .all()
+    )
+
+    # Format the result
+    result = {}
+    for stat in stats:
+        date = stat.date.isoformat()  # Format date as string
+        if date not in result:
+            result[date] = []
+        result[date].append(
+            {
+                "machine_id": stat.machine_id,
+                "total_bottles": stat.total_bottles or 0,
+                "total_weight": stat.total_weight or 0.0,
+            }
+        )
+
+    return result
+
+
+@router.get("/daywise-bottle-stats", dependencies=[Depends(verify_token)], tags=["Admin-Dashboard"])
+async def get_daywise_bottle_stats_all_businesses(
+    db: Session = Depends(get_db),
+):
+    """
+    Get day-wise count and weight of bottles per machine for all businesses.
+    """
+    # Query to calculate day-wise bottle stats for all businesses
+    stats = (
+        db.query(
+            cast(Bottle.created_at, Date).label("date"),  # Extract date from timestamp
+            Machine.id.label("machine_id"),
+            Machine.name.label("machine_name"),
+            func.sum(Bottle.bottle_count).label("total_bottles"),
+            func.sum(Bottle.bottle_weight).label("total_weight"),
+            Business.name.label("business_name")  # Get business name
+        )
+        .join(Machine, Bottle.machine_id == Machine.id)
+        .join(Business, Machine.business_id == Business.id)  # Join with Business table
+        .group_by(cast(Bottle.created_at, Date), Machine.id, Business.id)  # Group by date, machine, and business
+        .order_by(cast(Bottle.created_at, Date).desc(), Machine.id)  # Sort by date and machine
+        .all()
+    )
+
+    # Format the result
+    result = {}
+    for stat in stats:
+        date = stat.date.isoformat()  # Format date as string
+        business_name = stat.business_name
+        if date not in result:
+            result[date] = {}
+
+        if business_name not in result[date]:
+            result[date][business_name] = []
+
+        result[date][business_name].append(
+            {
+                "machine_id": stat.machine_id,
+                "machine_name": stat.machine_name,
+                "total_bottles": stat.total_bottles or 0,
+                "total_weight": stat.total_weight or 0.0,
+            }
+        )
+
+    return result
