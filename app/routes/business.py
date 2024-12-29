@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from app.models import Business
 from app.schemas import  BusinessCreate, UserCreate, BusinessUpdate
 from app.database import get_db
-from app.models import User
+from app.models import User, Machine, Bottle
 import os
 from app.core.security import role_required, verify_token, get_current_user
 from uuid import uuid4 
@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 import base64
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import func
+from sqlalchemy import func, case
 
 router = APIRouter()
 
@@ -286,3 +286,58 @@ async def get_business_count(db: Session = Depends(get_db)):
     business_count = db.query(func.count(Business.id)).scalar()
 
     return business_count
+
+
+@router.get("/business-stats/{business_id}", dependencies=[Depends(verify_token)], tags=["Admin-Dashboard"])
+async def get_business_stats(
+    business_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(role_required("t_admin"))
+):
+    """
+    Get total machine count, total bottle count, and total bottle weight for a given business ID.
+    """
+    # Validate the business
+    business = db.query(Business).filter(Business.id == business_id).first()
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    # Subquery for bottle statistics grouped by machine
+    bottle_stats_subquery = (
+        db.query(
+            Bottle.machine_id.label("machine_id"),
+            func.sum(Bottle.bottle_count).label("total_bottle_count"),
+            func.sum(Bottle.bottle_weight).label("total_bottle_weight"),
+        )
+        .group_by(Bottle.machine_id)
+        .subquery()
+    )
+
+    # Main query to calculate machine count
+    machine_count_query = db.query(func.count(Machine.id).label("total_machines")).filter(Machine.business_id == business_id)
+
+    # Fetch machine count
+    total_machines = machine_count_query.scalar()
+
+    # Fetch aggregated bottle stats directly
+    bottle_stats_query = (
+        db.query(
+            func.coalesce(func.sum(bottle_stats_subquery.c.total_bottle_count), 0).label("total_bottle_count"),
+            func.coalesce(func.sum(bottle_stats_subquery.c.total_bottle_weight), 0.0).label("total_bottle_weight"),
+        )
+        .join(Machine, Machine.id == bottle_stats_subquery.c.machine_id)
+        .filter(Machine.business_id == business_id)
+    )
+
+    bottle_stats = bottle_stats_query.first()
+    total_bottle_count = bottle_stats.total_bottle_count
+    total_bottle_weight = bottle_stats.total_bottle_weight
+
+    # Return the results
+    return {
+        "business_id": business_id,
+        "business_name": business.name,
+        "total_machines": total_machines,
+        "total_bottle_count": total_bottle_count,
+        "total_bottle_weight": total_bottle_weight,
+    }
