@@ -188,16 +188,20 @@ async def get_daywise_bottle_stats(
     business = db.query(Business).filter(Business.business_owner == business_owner).first()
     if not business:
         raise HTTPException(status_code=404, detail="Business not found")
-    # Query to calculate day-wise bottle stats
+    
+    # Get all machines for the business
+    machines = db.query(Machine).filter(Machine.business_id == business.id).all()
+    
+    # Query to calculate day-wise bottle stats with left join
     stats = (
         db.query(
             cast(Bottle.created_at, Date).label("date"),  # Extract date from timestamp
             Machine.id.label("machine_id"),
             Machine.name.label("machine_name"),
-            func.sum(Bottle.bottle_count).label("total_bottles"),
-            func.sum(Bottle.bottle_weight).label("total_weight"),
+            func.coalesce(func.sum(Bottle.bottle_count), 0).label("total_bottles"),  # Handle no bottles case
+            func.coalesce(func.sum(Bottle.bottle_weight), 0.0).label("total_weight"),  # Handle no weight case
         )
-        .join(Machine, Bottle.machine_id == Machine.id)
+        .join(Machine, Bottle.machine_id == Machine.id, isouter=True)  # Left join to include machines without bottles
         .filter(Machine.business_id == business.id)  # Filter by business ID from the current user
         .group_by(cast(Bottle.created_at, Date), Machine.id)  # Group by date and machine
         .order_by(cast(Bottle.created_at, Date).desc(), Machine.id)  # Sort by date and machine
@@ -210,16 +214,32 @@ async def get_daywise_bottle_stats(
         date = stat.date.isoformat()  # Format date as string
         if date not in result:
             result[date] = []
+
+        # Add machine details
         result[date].append(
             {
                 "machine_id": stat.machine_id,
-                "total_bottles": stat.total_bottles or 0,
-                "total_weight": stat.total_weight or 0.0,
+                "machine_name": stat.machine_name,
+                "total_bottles": stat.total_bottles,
+                "total_weight": stat.total_weight,
             }
         )
 
-    return result
+    # Ensure machines with no records are included with zero values
+    for machine in machines:
+        for date in result:
+            # If the machine is not in the day-wise records, add it with zero values
+            if not any(m["machine_id"] == machine.id for m in result[date]):
+                result[date].append(
+                    {
+                        "machine_id": machine.id,
+                        "machine_name": machine.name,
+                        "total_bottles": 0,
+                        "total_weight": 0.0,
+                    }
+                )
 
+    return result
 
 @router.get("/daywise-bottle-stats", dependencies=[Depends(verify_token)], tags=["Admin-Dashboard"])
 async def get_daywise_bottle_stats_all_businesses(
@@ -234,11 +254,11 @@ async def get_daywise_bottle_stats_all_businesses(
             cast(Bottle.created_at, Date).label("date"),  # Extract date from timestamp
             Machine.id.label("machine_id"),
             Machine.name.label("machine_name"),
-            func.sum(Bottle.bottle_count).label("total_bottles"),
-            func.sum(Bottle.bottle_weight).label("total_weight"),
+            func.coalesce(func.sum(Bottle.bottle_count), 0).label("total_bottles"),  # Handle no bottles case
+            func.coalesce(func.sum(Bottle.bottle_weight), 0.0).label("total_weight"),  # Handle no weight case
             Business.name.label("business_name")  # Get business name
         )
-        .join(Machine, Bottle.machine_id == Machine.id)
+        .join(Machine, Bottle.machine_id == Machine.id, isouter=True)  # Left join to include machines without bottles
         .join(Business, Machine.business_id == Business.id)  # Join with Business table
         .group_by(cast(Bottle.created_at, Date), Machine.id, Business.id)  # Group by date, machine, and business
         .order_by(cast(Bottle.created_at, Date).desc(), Machine.id)  # Sort by date and machine
@@ -260,9 +280,30 @@ async def get_daywise_bottle_stats_all_businesses(
             {
                 "machine_id": stat.machine_id,
                 "machine_name": stat.machine_name,
-                "total_bottles": stat.total_bottles or 0,
-                "total_weight": stat.total_weight or 0.0,
+                "total_bottles": stat.total_bottles,
+                "total_weight": stat.total_weight,
             }
         )
+
+    # Now, ensure all machines are included for each business even if they don't have bottle records
+    # Get all machines for each business
+    businesses = db.query(Business).all()
+    for business in businesses:
+        machines = db.query(Machine).filter(Machine.business_id == business.id).all()
+        for date in result:
+            if business.name not in result[date]:
+                result[date][business.name] = []
+
+            # Check if the machine is missing for this date, if so, add it with zero values
+            for machine in machines:
+                if not any(m["machine_id"] == machine.id for m in result[date][business.name]):
+                    result[date][business.name].append(
+                        {
+                            "machine_id": machine.id,
+                            "machine_name": machine.name,
+                            "total_bottles": 0,
+                            "total_weight": 0.0,
+                        }
+                    )
 
     return result
