@@ -254,11 +254,11 @@ async def get_daywise_bottle_stats_all_businesses(
             cast(Bottle.created_at, Date).label("date"),  # Extract date from timestamp
             Machine.id.label("machine_id"),
             Machine.name.label("machine_name"),
-            func.sum(Bottle.bottle_count).label("total_bottles"),
-            func.sum(Bottle.bottle_weight).label("total_weight"),
+            func.coalesce(func.sum(Bottle.bottle_count), 0).label("total_bottles"),  # Handle no bottles case
+            func.coalesce(func.sum(Bottle.bottle_weight), 0.0).label("total_weight"),  # Handle no weight case
             Business.name.label("business_name")  # Get business name
         )
-        .join(Machine, Bottle.machine_id == Machine.id)
+        .join(Machine, Bottle.machine_id == Machine.id, isouter=True)  # Left join to include machines without bottles
         .join(Business, Machine.business_id == Business.id)  # Join with Business table
         .group_by(cast(Bottle.created_at, Date), Machine.id, Business.id)  # Group by date, machine, and business
         .order_by(cast(Bottle.created_at, Date).desc(), Machine.id)  # Sort by date and machine
@@ -280,9 +280,30 @@ async def get_daywise_bottle_stats_all_businesses(
             {
                 "machine_id": stat.machine_id,
                 "machine_name": stat.machine_name,
-                "total_bottles": stat.total_bottles or 0,
-                "total_weight": stat.total_weight or 0.0,
+                "total_bottles": stat.total_bottles,
+                "total_weight": stat.total_weight,
             }
         )
+
+    # Now, ensure all machines are included for each business even if they don't have bottle records
+    # Get all machines for each business
+    businesses = db.query(Business).all()
+    for business in businesses:
+        machines = db.query(Machine).filter(Machine.business_id == business.id).all()
+        for date in result:
+            if business.name not in result[date]:
+                result[date][business.name] = []
+
+            # Check if the machine is missing for this date, if so, add it with zero values
+            for machine in machines:
+                if not any(m["machine_id"] == machine.id for m in result[date][business.name]):
+                    result[date][business.name].append(
+                        {
+                            "machine_id": machine.id,
+                            "machine_name": machine.name,
+                            "total_bottles": 0,
+                            "total_weight": 0.0,
+                        }
+                    )
 
     return result
