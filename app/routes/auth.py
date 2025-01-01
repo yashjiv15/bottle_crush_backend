@@ -15,6 +15,7 @@ router = APIRouter()
 @router.post("/login/", response_model=Token, tags=["Admin-Customer"])
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = get_user_by_email(db, user.email)
+    print("DB USER \n\n\n\n",db_user.email, db_user.password, user.password)
     if db_user is None:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 

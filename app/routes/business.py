@@ -5,7 +5,7 @@ from app.schemas import  BusinessCreate, UserCreate, BusinessUpdate
 from app.database import get_db
 from app.models import User, Machine, Bottle
 import os
-from app.core.security import role_required, verify_token, get_current_user
+from app.core.security import role_required, verify_token, get_current_user, pwd_context
 from uuid import uuid4 
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import base64
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import func, case
+import bcrypt
 
 router = APIRouter()
 
@@ -57,13 +58,16 @@ async def create_business(
             print("User with this email already exists. Proceeding with business creation.")
             new_user = existing_user  # Use the existing user if found
         else:
+            # Hash the password using the passlib context
+            hashed_password = pwd_context.hash(user_data["password"])
+
             # Create a new user if none exists
             new_user = User(
                 email=user_data["email"],
-                password=user_data["password"],  # Ensure password is hashed
+                password=hashed_password,  # Store the hashed password
                 role='t_customer',
-                created_by=current_user["id"],  # Changed from current_user.id
-                updated_by=current_user["id"],  # Changed from current_user.id
+                created_by=current_user.id,  # Use current_user.id for creation
+                updated_by=current_user.id,  # Use current_user.id for updates
             )
             db.add(new_user)
             db.commit()  # Auto-generate the 'id'
@@ -101,8 +105,8 @@ async def create_business(
             mobile=business_data["mobile"],
             logo_image=logo_binary,  # This can now be None if no file is uploaded
             business_owner=new_user.id,
-            created_by=current_user["id"],  # Changed from current_user.id
-            updated_by=current_user["id"],  # Changed from current_user.id
+            created_by=current_user["id"],  # Use current_user.id for creation
+            updated_by=current_user["id"],  # Use current_user.id for updates
         )
         db.add(new_business)
         db.commit()
@@ -116,8 +120,6 @@ async def create_business(
         "business_id": new_business.id,
         "user_id": new_user.id,
     })
-
-
 
 @router.get("/business/{business_id}", response_model=None, dependencies=[Depends(verify_token)], tags=["Admin-Business"])
 async def get_business(business_id: int, db: Session = Depends(get_db)):
@@ -341,3 +343,71 @@ async def get_business_stats(
         "total_bottle_count": total_bottle_count,
         "total_bottle_weight": total_bottle_weight,
     }
+
+@router.put("/update_business/{business_id}", dependencies=[Depends(verify_token)], tags=["Admin-Business"])
+async def update_business(
+    business_id: int,
+    business_data: str = Form(...),  # JSON string as input
+    user_data: str = Form(...),      # JSON string as input
+    logo_image: UploadFile = File(None),  # Optional file input
+    db: Session = Depends(get_db),
+    current_user: User = Depends(role_required("t_admin"))
+):
+
+    try:
+        # Parse the JSON data
+        business_data = json.loads(business_data)
+        user_data = json.loads(user_data)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON data: {e}")
+
+    # Step 1: Get the Business Record
+    business = db.query(Business).filter(Business.id == business_id).first()
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    # Step 2: Validate the User Record and Update
+    user = db.query(User).filter(User.id == business.business_owner).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update user email if changed
+    if "email" in user_data and user_data["email"] != user.email:
+        # Check if the new email already exists
+        existing_user = db.query(User).filter(User.email == user_data["email"]).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        user.email = user_data["email"]
+    
+    # Update password if provided, using the same hashing logic
+    if "password" in user_data:
+        # Hash the new password using the passlib context
+        user.password = pwd_context.hash(user_data["password"])
+    
+    # Commit the user updates
+    user.updated_by = current_user["id"]
+    db.commit()
+    db.refresh(user)
+
+    # Step 3: Handle Logo File if Provided
+    if logo_image:
+        logo_binary = await logo_image.read()
+        if len(logo_binary) > 5 * 1024 * 1024:  # 5MB limit
+            raise HTTPException(status_code=400, detail="File is too large")
+        business.logo_image = logo_binary  # Update logo file if a new one is uploaded
+
+    # Step 4: Update Business Record
+    if "name" in business_data:
+        business.name = business_data["name"]
+    if "mobile" in business_data:
+        business.mobile = business_data["mobile"]
+
+    business.updated_by = current_user["id"]  # Update the "updated_by" field
+    db.commit()
+    db.refresh(business)
+
+    return JSONResponse(content={
+        "message": "Business and user updated successfully",
+        "business_id": business.id,
+        "user_id": user.id,
+    })
