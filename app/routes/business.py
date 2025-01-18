@@ -116,7 +116,7 @@ async def create_business(
         raise HTTPException(status_code=500, detail=f"Error creating business: {str(e)}")
 
     return JSONResponse(content={
-        "message": "Business and user created successfully",
+        "message": "Business created successfully",
         "business_id": new_business.id,
         "user_id": new_user.id,
     })
@@ -407,7 +407,7 @@ async def update_business(
     db.refresh(business)
 
     return JSONResponse(content={
-        "message": "Business and user updated successfully",
+        "message": "Business updated successfully",
         "business_id": business.id,
         "user_id": user.id,
     })
