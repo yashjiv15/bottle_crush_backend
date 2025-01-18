@@ -66,8 +66,8 @@ async def create_business(
                 email=user_data["email"],
                 password=hashed_password,  # Store the hashed password
                 role='t_customer',
-                created_by=current_user.id,  # Use current_user.id for creation
-                updated_by=current_user.id,  # Use current_user.id for updates
+                created_by=current_user["id"],  # Use current_user.id for creation
+                updated_by=current_user["id"],  # Use current_user.id for updates
             )
             db.add(new_user)
             db.commit()  # Auto-generate the 'id'
