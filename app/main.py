@@ -31,15 +31,29 @@ app.include_router(bottle_router)
 app.include_router(email_router)
 
 
+# Connect to the database on app startup
+@app.on_event("startup")
+async def startup():
+    # Connect to PostgreSQL database
+    await database.connect()
+
+# Disconnect from the database on app shutdown
+@app.on_event("shutdown")
+async def shutdown():
+    # Disconnect from the database
+    await database.disconnect()
+
+@app.get("/")
+def root():
+    return {"message": "Welcome to the FastAPI app with SQLite!"}
+
+# Enable running with Uvicorn for local development
 if __name__ == "__main__":
-    import asyncio
+    import uvicorn
 
-    async def test_connection():
-        try:
-            await database.connect()
-            print("Successfully connected to MySQL!")
-            await database.disconnect()
-        except Exception as e:
-            print(f"Connection failed: {e}")
-
-    asyncio.run(test_connection())
+    uvicorn.run(
+        "main:app",  # Use the app instance defined above
+        host=os.getenv("HOST", "0.0.0.0"),  # Default to localhost
+        port=int(os.getenv("PORT", 8000)),    # Default to port 8000
+        reload=True                           # Enable auto-reload for development
+    )
