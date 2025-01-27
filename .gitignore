@@ -230,15 +230,7 @@ _pkginfo.txt
 # files ending in .cache can be ignored
 *.[Cc]ache
 # but keep track of directories ending in .cache
-!?*.[Cc]ache/
-
-# Python bytecode cache files
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-
+!**/[Cc]ache/
 # Others
 ClientBin/
 ~$*
@@ -482,3 +474,9 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# Python bytecode cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
