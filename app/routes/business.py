@@ -41,85 +41,115 @@ async def create_business(
     db: Session = Depends(get_db),
     current_user: User = Depends(role_required("t_admin"))
 ):
+    print("Starting the create_business endpoint...")
 
+    # Step 1: Parse the JSON data
     try:
-        # Parse the JSON data
+        print("Parsing business_data and user_data JSON strings...")
         business_data = json.loads(business_data)
         user_data = json.loads(user_data)
+        print("Parsed business_data:", business_data)
+        print("Parsed user_data:", user_data)
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON data: {e}")
 
-    # Step 1: Validate and Create the User
+    # Step 2: Validate and Create the User
     try:
-        # Check if the email is already registered
+        print(f"Checking if user with email {user_data['email']} already exists...")
         existing_user = db.query(User).filter(User.email == user_data["email"]).first()
 
         if existing_user:
-            print("User with this email already exists. Proceeding with business creation.")
-            new_user = existing_user  # Use the existing user if found
+            print(f"User already exists. Using existing user: {existing_user}")
+            new_user = existing_user
         else:
-            # Hash the password using the passlib context
+            print("User does not exist. Creating a new user...")
             hashed_password = pwd_context.hash(user_data["password"])
 
-            # Create a new user if none exists
             new_user = User(
                 email=user_data["email"],
-                password=hashed_password,  # Store the hashed password
+                password=hashed_password,
                 role='t_customer',
-                created_by=current_user["id"],  # Use current_user.id for creation
-                updated_by=current_user["id"],  # Use current_user.id for updates
+                created_by=current_user["id"],
+                updated_by=current_user["id"],
             )
             db.add(new_user)
-            db.commit()  # Auto-generate the 'id'
-            db.refresh(new_user)  # Refresh to load the generated 'id'
+            db.commit()
+            db.refresh(new_user)
+            print(f"New user created successfully with ID: {new_user.id}")
 
-    except SQLAlchemyError as e:
+        # Ensure new_user.id is valid
+        if not (0 <= new_user.id <= 2147483647):
+            raise ValueError(
+                f"Invalid user ID: {new_user.id}. ID must be within the range [0, 2147483647]."
+            )
+
+    except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
 
-    # Step 2: Validate if the Business already exists
+    # Step 3: Validate if the Business already exists
     try:
+        print(f"Checking if business with name {business_data['name']} already exists...")
         existing_business = db.query(Business).filter(Business.name == business_data["name"]).first()
         if existing_business:
             raise HTTPException(status_code=400, detail="Business with this name already exists")
+        print("Business name is available.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error checking business: {str(e)}")
 
-    # Step 3: Handle the Logo File
+    # Step 4: Handle the Logo File
     try:
         if logo_image:
+            print(f"Reading uploaded logo file: {logo_image.filename}")
             logo_binary = await logo_image.read()
+            print(f"Logo file size: {len(logo_binary)} bytes")
 
-            if len(logo_binary) > 5 * 1024 * 1024:  # 5MB limit
-                raise HTTPException(status_code=400, detail="File is too large")
+            # Enforce file size limit (5MB)
+            if len(logo_binary) > 5 * 1024 * 1024:
+                raise HTTPException(status_code=400, detail="Logo file is too large (maximum size is 5MB).")
         else:
-            logo_binary = None  # Set to None if no file is uploaded
+            print("No logo file uploaded.")
+            logo_binary = None
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error reading file: {str(e)}")
 
-    # Step 4: Create the Business Record
+    # Step 5: Create the Business Record
     try:
+        print("Creating a new business record...")
+        custom_business_id = 40  # Change this to None if you don't want a specific ID.
+        
+        # Check if custom ID is used and validate for uniqueness
+        if custom_business_id:
+            existing_business_id = db.query(Business).filter(Business.id == custom_business_id).first()
+            if existing_business_id:
+                raise HTTPException(status_code=400, detail=f"Business ID {custom_business_id} is already in use.")
+
         new_business = Business(
+            id=custom_business_id if custom_business_id else None,  # Explicitly set ID if provided
             name=business_data["name"],
             mobile=business_data["mobile"],
-            logo_image=logo_binary,  # This can now be None if no file is uploaded
+            logo_image=logo_binary,
             business_owner=new_user.id,
-            created_by=current_user["id"],  # Use current_user.id for creation
-            updated_by=current_user["id"],  # Use current_user.id for updates
+            created_by=current_user["id"],
+            updated_by=current_user["id"],
         )
         db.add(new_business)
         db.commit()
         db.refresh(new_business)
+        print(f"New business created successfully with ID: {new_business.id}")
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creating business: {str(e)}")
 
+    print("Returning success response...")
     return JSONResponse(content={
         "message": "Business created successfully",
         "business_id": new_business.id,
         "user_id": new_user.id,
     })
+
 
 @router.get("/business/{business_id}", response_model=None, dependencies=[Depends(verify_token)], tags=["Admin-Business"])
 async def get_business(business_id: int, db: Session = Depends(get_db)):
