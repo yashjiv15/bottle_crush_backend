@@ -54,6 +54,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",  # Use the app instance defined above
         host=os.getenv("HOST", "0.0.0.0"),  # Default to localhost
-        port=int(os.getenv("PORT", 8000)),    # Default to port 8000
+        port=int(os.getenv("PORT", 8005)),    # Default to port 8000
         reload=True                           # Enable auto-reload for development
     )

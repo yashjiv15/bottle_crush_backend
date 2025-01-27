@@ -6,8 +6,12 @@ from app.database import get_db
 from datetime import datetime
 from app.core.security import get_current_user, verify_token
 from sqlalchemy.orm import aliased
-from sqlalchemy import func, cast, Date
+from sqlalchemy import false, func, cast, Date
 from typing import Dict
+import pytz
+
+
+IST = pytz.timezone('Asia/Kolkata')
 
 router = APIRouter()
 
@@ -20,14 +24,19 @@ async def create_bottle(
     machine = db.query(Machine).filter(Machine.id == bottle.machine_id).first()
     if not machine:
         raise HTTPException(status_code=404, detail="Machine not found")
+    
+    current_time_ist = datetime.now(IST)
+    business_id = machine.business_id
 
     # Create a new bottle entry
     db_bottle = Bottle(
         machine_id=bottle.machine_id,
         bottle_count=bottle.bottle_count,
         bottle_weight=bottle.bottle_weight,
-        created_by=1,  # User creating the entry
-        updated_by=1,  # User updating the entry
+        created_by=business_id,  # Use the business_id from the machine
+        updated_by=business_id,
+        created_at=current_time_ist,  # Set created_at to current time in IST
+        updated_at=current_time_ist 
     )
     db.add(db_bottle)
     db.commit()
@@ -268,22 +277,25 @@ async def get_daywise_bottle_stats_all_businesses(
     # Format the result
     result = {}
     for stat in stats:
-        date = stat.date.isoformat()  # Format date as string
-        business_name = stat.business_name
-        if date not in result:
-            result[date] = {}
+        if stat.date is not None:
+            date = stat.date.isoformat()  # Format date as string
+            business_name = stat.business_name
+            if date not in result:
+               result[date] = {}
 
-        if business_name not in result[date]:
-            result[date][business_name] = []
+            if business_name not in result[date]:
+               result[date][business_name] = []
 
-        result[date][business_name].append(
-            {
+            result[date][business_name].append(
+                {
                 "machine_id": stat.machine_id,
                 "machine_name": stat.machine_name,
                 "total_bottles": stat.total_bottles,
                 "total_weight": stat.total_weight,
-            }
-        )
+                }
+            )
+        else:
+            print("Warning: Found a stat with None date:", stat)
 
     # Now, ensure all machines are included for each business even if they don't have bottle records
     # Get all machines for each business
