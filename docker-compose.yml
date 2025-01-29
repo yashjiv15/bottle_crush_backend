@@ -10,3 +10,4 @@ services:
       - ./uploads:/app/uploads  # Persist uploaded files
     environment:
       - ENV=production
+    restart: always  # Add this line to ensure the container restarts automatically
