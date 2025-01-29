@@ -19,6 +19,11 @@ async def create_machine(
     db: Session = Depends(get_db),
     current_user: User = Depends(role_required("t_admin"))
 ):
+    # Check if the machine number already exists
+    existing_machine = db.query(Machine).filter(Machine.number == machine.number).first()
+    if existing_machine:
+        raise HTTPException(status_code=400, detail="Machine number already exists")
+
     # Check if the owner exists
     business = db.query(Business).filter(Business.id == machine.business_id).first()
     if not business:
@@ -33,8 +38,8 @@ async def create_machine(
         state=machine.state,
         pin_code=machine.pin_code,
         business_id=machine.business_id,
-        created_by=current_user["id"],  # Changed from current_user.id
-        updated_by=current_user["id"],  # Changed from current_user.id
+        created_by=current_user["id"],
+        updated_by=current_user["id"],
     )
     db.add(db_machine)
     db.commit()
