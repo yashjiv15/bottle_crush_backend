@@ -953,7 +953,6 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 
-# Windows shortcuts
 *.lnk
 
 # Python bytecode cache files
