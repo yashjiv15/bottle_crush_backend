@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: bottle_crush_backend
+    ports:
+      - "8010:8010"
+    volumes:
+      - ./uploads:/app/uploads  # Persist uploaded files
+    environment:
+      - ENV=production
